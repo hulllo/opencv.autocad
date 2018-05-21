@@ -33,7 +33,7 @@ image, contours, hierarchy = cv2.findContours(
 
 # cv2.waitKey(0)
 
-
+test
 
 for cnt in contours:
     t = None
