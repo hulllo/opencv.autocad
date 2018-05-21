@@ -32,11 +32,6 @@ image, contours, hierarchy = cv2.findContours(
 # cv2.imshow('img',img)
 
 # cv2.waitKey(0)
-
-
-
-
-
 for cnt in contours:
     t = None
     for point in cnt:
