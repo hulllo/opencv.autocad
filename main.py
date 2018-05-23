@@ -100,7 +100,7 @@ img_gray_deal = cv2.cvtColor(img_contours_deal, cv2.COLOR_BGR2GRAY)
 # 3.霍夫圆变换
 drawing = np.zeros(img.shape[:], dtype=np.uint8)
 
-circles = cv2.HoughCircles(img_gray_deal, cv2.HOUGH_GRADIENT, 1, 10, param1=100, param2=60)
+circles = cv2.HoughCircles(img_gray_deal, cv2.HOUGH_GRADIENT, 1, 10, param1=100, param2=65)
 circles = np.int0(np.around(circles))
 
 # 将检测的圆画出来
