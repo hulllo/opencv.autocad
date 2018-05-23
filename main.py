@@ -142,4 +142,3 @@ for cnt in contours:
     print('complied {0}%'.format(complie_cnt),end = '\r',flush = True)
     # a.ActiveDocument.ModelSpace.AddLine(first_point,start_pt)
 # a.ZoomAll() 
-# 
