@@ -1,16 +1,17 @@
 # -*- coding: UTF-8 -*-
-from win32com.client import Dispatch, VARIANT
-import pythoncom
 import os
+
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import pythoncom
+from matplotlib.widgets import RadioButtons, Slider
+from win32com.client import VARIANT, Dispatch
 
 a = Dispatch('AutoCAD.Application')
 print(a)
 a.Visible = 1
 
-import cv2
-import matplotlib.pyplot as plt
 def track_back(x):
     pass
 
@@ -19,17 +20,26 @@ def POINT(x,y,z):
 
 path=os.path.dirname(__file__)
 
-img = cv2.imread(path+'/2.png')
+img = cv2.imread(path+'/1.png')
+# fig, ax = plt.subplots(ncols=3, sharex=True, sharey=True,
+#                        figsize=(8, 4))
+# b = img[:, :, 0]
+# g = img[:, :, 1]
+# r = img[:, :, 2]
+# ax[0].imshow(b, cmap="gray")
+# ax[1].imshow(g, cmap="gray")
+# ax[2].imshow(r, cmap="gray")
 img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-fig, ax = plt.subplots(ncols=1, sharex=True, sharey=True,
-                       figsize=(8, 4))
+
+
+                      
 # 自适应均衡化，参数可选
 # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 # cl1 = clahe.apply(img_gray)
 # cv2.imshow('equalization', np.hstack((img_gray, cl1)))  # 并排显示
 # cv2.waitKey(0)
 
-# cv2.namedWindow('br/co')
+# cv2.namedWindow('br/co',0)
 # cv2.createTrackbar('alpha', 'br/co', 100, 200, track_back)
 # cv2.createTrackbar('beta', 'br/co', 0, 255, track_back)
 # while(True):
@@ -37,7 +47,7 @@ fig, ax = plt.subplots(ncols=1, sharex=True, sharey=True,
 #     alpha_val = cv2.getTrackbarPos('alpha', 'br/co')
 #     beta_val = cv2.getTrackbarPos('beta', 'br/co')
 
-#     res = np.uint8(np.clip((alpha_val/100 * img_gray + beta_val), 0, 255))
+#     res = np.uint8(np.clip((alpha_val/100 * r + beta_val), 0, 255))
 #     tmp = np.hstack((img_gray, res))  # 两张图片横向合并（便于对比显示）
 #     cv2.imshow('br/co', tmp)
 
@@ -49,7 +59,7 @@ fig, ax = plt.subplots(ncols=1, sharex=True, sharey=True,
 # cv2.namedWindow('filt')
 # # img = cv2.medianBlur(img, 5)  # 中值滤波
 # # img = cv2.GaussianBlur(img, (5, 5), 1)  # 高斯滤波
-# # img = cv2.bilateralFilter(img_gray, 9, 75, 75)  # 双边滤波
+# img_gray = cv2.bilateralFilter(img_gray, 9, 75, 75)  # 双边滤波
 # cv2.createTrackbar('d', 'filt', 9, 16, track_back)
 # cv2.createTrackbar('sigma', 'filt', 0, 255, track_back)
 
@@ -64,15 +74,17 @@ fig, ax = plt.subplots(ncols=1, sharex=True, sharey=True,
 #     # 按下ESC键退出
 #     if cv2.waitKey(30) == 27:
         # break
-
+fig, ax = plt.subplots(ncols=2, sharex=True, sharey=True,
+                       figsize=(8, 4))
 # 二值化图像
-ret, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+ret, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 # ret_deal, thresh_deal = cv2.threshold(img_filt, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 # tmp = np.hstack((thresh, thresh_deal))  # 两张图片横向合并（便于对比显示）
-ax.imshow(thresh)
-plt.show()
-cv2.imshow('thresh', thresh)
-cv2.waitKey(0)
+# cv2.namedWindow('thresh', 0)
+# cv2.imshow('thresh', thresh)
+# cv2.waitKey(0)
+ax[0].imshow(thresh, cmap="gray")
+
 image, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST,  cv2.CHAIN_APPROX_SIMPLE)
 # 寻找二值化图中的轮廓
 # image, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
@@ -85,8 +97,8 @@ img_z1 = np.zeros((img.shape[0],img.shape[1],3), np.uint8)
 # img_z2 = np.zeros((img.shape[0],img.shape[1],3), np.uint8)  
 img_contours = cv2.drawContours(img_z1, contours, -1, (255,255,255), 1)
 # img_contours_deal = cv2.drawContours(img_z2, contours_deal, -1, (255,255,255), 1)
-cv2.imshow('img_contours',img_contours)
-cv2.waitKey(0)
+ax[1].imshow(img_contours, cmap="gray")
+plt.show()
 
 # fig, ax = plt.subplots(ncols=2, sharex=True, sharey=True,
 #                        figsize=(8, 4))
@@ -137,9 +149,8 @@ for cnt in contours:
             end_pt = t
             t = start_pt
 
-        # a.ActiveDocument.ModelSpace.AddLine(start_pt,end_pt)
+        a.ActiveDocument.ModelSpace.AddLine(start_pt,end_pt)
     complie_cnt = int(count_cnt/count_all*100)
     print('complied {0}%'.format(complie_cnt),end = '\r',flush = True)
-    # a.ActiveDocument.ModelSpace.AddLine(first_point,start_pt)
-# a.ZoomAll() 
-#test1
+    a.ActiveDocument.ModelSpace.AddLine(first_point,start_pt)
+a.ZoomAll() 
