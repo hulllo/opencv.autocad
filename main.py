@@ -102,6 +102,7 @@ img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # if cv2.waitKey(30) == 27:
     #     break
 fig, (ax1, ax2) = plt.subplots(ncols = 2, sharex = True, sharey = True)
+# fig.gca().invert_yaxis()
 
 # fig, bx = plt.subplots(ncols=2, sharex=True, sharey=True,)                       
 # 二值化图像
@@ -145,7 +146,6 @@ closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
 
 
 ax1.imshow(thresh, cmap="gray")
-ax1.axis('off')
 
 image, contours, hierarchy = cv2.findContours(closing, cv2.RETR_LIST,  cv2.CHAIN_APPROX_SIMPLE)
 # 寻找二值化图中的轮廓
@@ -161,11 +161,11 @@ image, contours, hierarchy = cv2.findContours(closing, cv2.RETR_LIST,  cv2.CHAIN
 # img_contours_deal = cv2.drawContours(img_z2, contours_deal, -1, (255,255,255), 1)
 # ax[1].imshow(img_contours, cmap="gray")
 ax2.axis('image')
-ax2.set_xticks([])
-ax2.set_yticks([])
+# ax2.set_xticks([])#关闭坐标轴
+# ax2.set_yticks([])
 
 ##################################################################
-n =60
+n =61
 xdata = contours[n][:,:,0]
 ydata = contours[n][:,:,1]
 # print(xdata.shape)
@@ -177,18 +177,69 @@ stop = np.where(xdata == np.max(xdata))[0][0]#找出结束点位置，x轴的最
 x = xdata[start:stop,0] #从开始点到结束点的x轴值
 y = ydata[start:stop,0]#从开始点到结束点的y轴值
 # print(xdata[start:stop,0])
+deltas = []
+for n in range(len(x)-1):
+    delta = x[n+1] - x[n]
+    deltas.append(delta)
+print(deltas)
+max_index = deltas.index(max(deltas))
+print (max_index) # 返回最大值
+print(x[max_index],y[max_index])
+print(x[max_index+1],y[max_index+1])
 
-#对曲线进行拟合
-f1 = np.polyfit(x, y, 2)  
-p1 = np.poly1d(f1)  
-# print(p1) 
-#也可使用yvals=np.polyval(f1, x)  
-yvals = p1(x)  #拟合y值  
-plot1 = plt.plot(x, y, 's',label='original values')  
-deltas = abs(yvals - y)#计算拟合值与实际值的差值，如果差值>4,舍弃这个拟合值。
+k = (y[max_index+1] - y[max_index])/(x[max_index+1]-x[max_index])  #计算直线斜率
+d = y[max_index] - k * x[max_index]  #计算直线截距
+print('y = {0}*x + ({1})'.format(k,d))
+
+ynews = []
+for n in x:
+    ynew = k * n + d
+    ynews.append(ynew)
+print('ynews',ynews)
+k1s = []
+k2s = []
+print('x is :',x)
+
+
+deltas = abs(ynews - y)
+
+# for n in range(len(deltas)):
+#     if deltas[n] != 0:
+
 for n, delta in enumerate(deltas):
-    if delta > 4:
-        yvals[n] = y[n]
+    try:
+        if delta > 2 :
+            # print(delta,end = '\t')
+            if deltas[n-1] > 2 or deltas[n+1] > 2:
+                # print(deltas[n-1])
+                ynews[n] = y[n]
+        elif deltas[n-1] > 2 or deltas[n+1] > 2:
+            ynews[n] = y[n]
+
+
+
+    except IndexError:
+        pass
+print(deltas)
+print(abs(ynews - y))
+
+# print('k1 is :', k1s)
+# print('deltal of k1 & k2 is:',np.array(k1s) - np.array(k2s))
+print()
+plot1 = plt.plot(x, y, 's' ,label='original values')  
+plot2 = plt.plot(x, ynews,label='original values')
+
+# #对曲线进行拟合
+# f1 = np.polyfit(x, y, 2)  
+# p1 = np.poly1d(f1)  
+# # print(p1) 
+# #也可使用yvals=np.polyval(f1, x)  
+# yvals = p1(x)  #拟合y值  
+# plot1 = plt.plot(x, y, 's',label='original values')  
+# deltas = abs(yvals - y)#计算拟合值与实际值的差值，如果差值>4,舍弃这个拟合值。
+# for n, delta in enumerate(deltas):
+#     if delta > 4:
+#         yvals[n] = y[n]
 # ax2.plot(x, yvals, linewidth=1)
 ############################################################################
 start1 = start - 1  #另一端曲线的‘开始’
@@ -217,6 +268,7 @@ deltas = abs(yvals - y)#计算拟合值与实际值的差值，如果差值>4,�
 for n, delta in enumerate(deltas):
     if delta > 4:
         yvals[n] = y[n]
+
 # ax2.plot(x, yvals, linewidth=1)
 
 
