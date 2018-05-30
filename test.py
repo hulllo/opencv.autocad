@@ -1,37 +1,28 @@
 import cv2
-import numpy as np
-def preprocess(filename):
+import matplotlib.pyplot as plt
+import os
+path=os.path.dirname(__file__)
 
-    image = cv2.imread(filename)
-    image_gray = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
-    
-#    直方图均衡增强
-    image_equal = cv2.equalizeHist(image_gray)
-    r,g,b = cv2.split(image)
-    r1 = cv2.equalizeHist(r)
-    g1 = cv2.equalizeHist(g)
-    b1 = cv2.equalizeHist(b)
-    image_equal_clo = cv2.merge([r1, g1, b1])
-    
-#   拉普拉斯算法增强
-    kernel = np.array([ [0, -1, 0],  
-                    [-1,  5, -1],  
-                    [0, -1, 0] ]) 
-    image_lap = cv2.filter2D(image,cv2.CV_8UC3 , kernel)
-
-    cv2.imwrite('image_lap.jpg', image_lap)
-#    对象算法增强
-    image_log = np.uint8(np.log(np.array(image) +1))    
-    cv2.normalize(image_log, image_log,0,255,cv2.NORM_MINMAX)
-#    转换成8bit图像显示
-    cv2.convertScaleAbs(image_log,image_log)
-
-#    伽马变换
-    fgamma = 2
-    image_gamma = np.uint8(np.power((np.array(image)/255.0),fgamma)*255.0)
-    cv2.normalize(image_gamma, image_gamma, 0, 255, cv2.NORM_MINMAX)
-    cv2.convertScaleAbs(image_gamma, image_gamma)
-    cv2.imwrite('image_gamma.jpg', image_gamma)
+img = cv2.imread(path+'/realpcb1.jpg')
+img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+ret, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+# 闭运算
+kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))  # 椭圆结构
+thresh = cv2.medianBlur(thresh, 5)  # 中值滤波
+closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
 
 
-preprocess('2.jpg')    
+image, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST,  cv2.CHAIN_APPROX_SIMPLE)
+fig, (ax1, ax2) = plt.subplots(ncols = 2, sharex = True, sharey = True)
+
+ax1.imshow(thresh,cmap = 'gray')
+ax1.axis('off')
+
+ax2.axis('image')
+ax2.set_xticks([])
+ax2.set_yticks([])
+for n, contour in enumerate(contours):
+    xdata = contour[:,:,0]
+    ydata = contour[:,:,1]
+    ax2.plot(xdata,ydata)
+plt.show()
