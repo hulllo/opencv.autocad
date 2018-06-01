@@ -55,27 +55,7 @@ def stretch_line(x,y):
     # print('x:', len(x))
     # print('ynews:', len(ynews))
     return x, ynews
-def skeletonize(img):
-    """ OpenCV function to return a skeletonized version of img, a Mat object"""
 
-    #  hat tip to http://felix.abecassis.me/2011/09/opencv-morphological-skeleton/
-
-    img = img.copy() # don't clobber original
-    skel = img.copy()
-
-    skel[:,:] = 0
-    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
-
-    while True:
-        eroded = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
-        temp = cv2.morphologyEx(eroded, cv2.MORPH_DILATE, kernel)
-        temp  = cv2.subtract(img, temp)
-        skel = cv2.bitwise_or(skel, temp)
-        img[:,:] = eroded[:,:]
-        if cv2.countNonZero(img) == 0:
-            break
-
-    return skel
 path=os.path.dirname(__file__)
 
 img = cv2.imread(path+'/realpcb1.jpg')
@@ -116,7 +96,6 @@ while(True):
 
 from skimage.morphology import skeletonize
 from skimage import data
-import matplotlib.pyplot as plt
 from skimage.util import invert
 
 # Invert the horse image
@@ -200,29 +179,7 @@ for n, contour in enumerate(contours):
 
 plt.show()
 
-# fig, ax = plt.subplots(ncols=2, sharex=True, sharey=True,
-#                        figsize=(8, 4))
-# ax[0].imshow(img_contours)
-# ax[0].set_axis_off()
-# ax[1].imshow(img_contours_deal)
-# ax[1].set_axis_off()
-# plt.show()
-# img_gray_deal = cv2.cvtColor(img_contours_deal, cv2.COLOR_BGR2GRAY)
 
-# 3.霍夫圆变换
-# drawing = np.zeros(img.shape[:], dtype=np.uint8)
-
-# circles = cv2.HoughCircles(img_gray_deal, cv2.HOUGH_GRADIENT, 1, 10, param1=100, param2=65)
-# circles = np.int0(np.around(circles))
-
-# # 将检测的圆画出来
-# for i in circles[0, :]:
-#     cv2.circle(img_contours_deal, (i[0], i[1]), i[2], (0, 255, 0), 1)  # 画出外圆
-#     cv2.circle(img_contours_deal, (i[0], i[1]), 2, (0, 0, 255), 2)  # 画出圆心
-
-# cv2.imshow('circles', np.hstack((img_contours_deal, drawing)))
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
 
 count_all = 0
 for cnt in contours:
