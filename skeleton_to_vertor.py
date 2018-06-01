@@ -1,8 +1,12 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
-import  sys   
 import logging
+import sys
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+from skimage import data
+from skimage.morphology import skeletonize
+from skimage.util import invert
 
 logging.basicConfig(level=logging.WARNING)
 sys.setrecursionlimit(1000000)
@@ -49,6 +53,21 @@ def do_point(point,img,newline):
         return (img,newline )    
 #建立一副位图
 
+def zuobiaopaixu(a):  
+    b=[]  
+    l=len(a)  
+    for i in range(l):  
+        j=i  
+        for j in range(l):  
+            if (a[i][0]<a[j][0]):  
+                a[i],a[j]=a[j],a[i]  
+            if (a[i][1]>a[j][1]):  
+                a[i],a[j]=a[j],a[i]  
+  
+    for k in range(len(a)):  
+        b.append(a[k])  
+    return b  
+
 img = np.array([[1,1,1,1,1,1],
             [0,1,0,0,1,0],
             [0,1,1,0,0,0],
@@ -70,9 +89,6 @@ tmp = np.hstack((img_gray, thresh))  # 两张图片横向合并（便于对比�
 # cv2.waitKey(0)
 
 
-from skimage.morphology import skeletonize
-from skimage import data
-from skimage.util import invert
 
 # Invert the horse image
 # image = invert(data.horse())
@@ -118,10 +134,14 @@ ax1.imshow(skeleton, cmap="gray")
 while len(index) != 0:
     skeleton[index[0][0],index[0][1]] = 0 #在位图中删除这个像素点
     newline = []
-    newline.append(index[0]) #将该点增加到新矢量图队列
+    newline.append([index[0][0],index[0][1]]) #将该点增加到新矢量图队列
     skeleton,newline = do_point(index[0],skeleton,newline) #递归找点
 
+    # newline = zuobiaopaixu(newline)
+    # print(newline)
+    newline = sorted(newline)
     newline = np.array(newline) 
+
     xdata = newline[:,1]
     ydata = newline[:,0] 
     ax2.plot(xdata, ydata,linewidth = 1)
@@ -142,5 +162,3 @@ while len(index) != 0:
 #     plt.draw()
 #     logging.info('newline:{0}'.format(newline))
 plt.show()    
-
-
