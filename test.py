@@ -36,8 +36,8 @@ for i in range(len(xx)):
     u.append(xx[i][0])  
     v.append(xx[i][1])  
 #把 x y再次分开存储。目的是后面作图传递参数方便(也可以不用，只是参数传递不好看)  
-# u.append(u[0])  
-# v.append(v[0])  
+u.append(u[0])  
+v.append(v[0])  
 #在结尾追加第一个坐标值，这样线就闭合了  
 #后面的代码就是画图了。。。。。  
 fig=plt.figure(figsize=(4,4))  
