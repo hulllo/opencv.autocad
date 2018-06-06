@@ -98,6 +98,7 @@ def open_(filename):
     # img_gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 4)
 
     ret, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    print(thresh)
 
     # tmp = np.hstack((img_gray, thresh))  # 两张图片横向合并（便于对比显示）
     thresh[thresh == 255] = 1
@@ -123,7 +124,7 @@ img = np.array([[1,1,1,1,1,1],
 #             [0,0,0,0,0,0],
 #             [0,0,0,0,0,0],
 #             [0,0,0,0,0,0] ])
-img = open_('realpcb1.jpg')
+img = open_('minirealpcb1.jpg')
 shape = img.shape
 logging.info(shape)
 index = np.argwhere(img == 1)
@@ -156,83 +157,15 @@ while len(index) != 0:
         x = np.array(x)
         xdatas = x[:,1]
         ydatas = x[:,0]
-        # ax2.plot(xdatas, ydatas,linewidth = 1)
+        ax2.plot(xdatas, ydatas,linewidth = 1)
        
         plt.draw()
         # plt.pause(1e-27)
-        ks = []
-        for n,xdata in enumerate(xdatas):
-            if n >= 1:
-                k = (ydatas[n]-ydatas[n-1])/(xdatas[n]-xdatas[n-1]) #计算所有点两点之间的斜率
-                ks.append(k)
-        same_v,same_count = count_same(ks) #计算重复斜率的个数
-        count = 0
-        del_ranges = []
-        for i,v in enumerate(same_count):
-            real_index = 0
-            if same_count[i] >= 3:  #重复的斜率大于3，有多余的点
-                # print('i:',i)
-                for ii,vv in enumerate(same_count[0:i]):    #计算重复点前面的元素总个数
-                    real_index = real_index + vv
-                real_index_st = real_index +1       #计算重复点的开始位置
-                real_index_sp = real_index_st + same_count[i]-1 #计算重复点的结束位置
-                del_range = list(range(real_index_st,real_index_sp))    
-                del_ranges = del_ranges + del_range
-        newxdatas = np.delete(xdatas, del_ranges)   #删除重复的x点
-        newydatas = np.delete(ydatas, del_ranges)   #删除重复的y点
+        from nihe import plot_test
+        plot_test(xdatas,ydatas)
 
-        x_deltas = []
-        y_deltas = []  
-        ks = []  
-        for i,v in enumerate(newxdatas):
-            if i >= 1:
-                x_deltas.append(newxdatas[i] - newxdatas[i-1])
-                y_deltas.append(newydatas[i] - newydatas[i-1])
-        x_deltas_sorted = sorted(x_deltas, reverse = -1) 
-        y_deltas_sorted = sorted(y_deltas, reverse = -1)
-        
-        # print('x_deltas_sorted:',x_deltas_sorted)
-        # print('y_deltas_sorted:',y_deltas_sorted)
-
-
-        for i,v in enumerate(x_deltas_sorted):
-            x_deltas = []
-            for ii,vv in enumerate(newxdatas):
-                if ii >= 1:
-                    x_deltas.append(newxdatas[ii] - newxdatas[ii-1])
-            x_deltas_sorted = sorted(x_deltas, reverse = -1)
-            # print('x_deltas_sorted1:',x_deltas_sorted)
-
-            xdeltal =x_deltas_sorted[i]
-            if abs(xdeltal) >=5:
-                x_index = x_deltas.index(xdeltal) 
-                k = (newydatas[x_index+1] - newydatas[x_index])/(newxdatas[x_index+1] - newxdatas[x_index])
-                d = newydatas[x_index] - newxdatas[x_index] * k
-    
-                for ii,v in enumerate(newxdatas):
-                    if abs(newydatas[ii] - k * newxdatas[ii] - d) <= 1:
-                        newydatas[ii] = k * newxdatas[ii] + d
-
-            y_deltas = []
-            for ii,vv in enumerate(newxdatas):
-                if ii >= 1:
-                    y_deltas.append(newydatas[ii] - newydatas[ii-1])
-            y_deltas_sorted = sorted(y_deltas, reverse = -1)
-            # print('y_deltas_sorted1:',y_deltas_sorted)
-
-            ydeltal =y_deltas_sorted[i]
-            if abs(ydeltal) >= 5:
-                y_index = y_deltas.index(ydeltal)   
-                if newxdatas[y_index+1] - newxdatas[y_index] == 0:
-                    d = newxdatas[y_index]
-                    k = 0
-                    for i,v in enumerate(newydatas):
-                        if abs(newxdatas[i] -  d) <= 1:
-                            newxdatas[i] =  d
-        ax2.plot(newxdatas, newydatas,linewidth = 1)
-
-        # break
-    # break
+        break
+    break
     index = np.argwhere(img == 1)
 plt.show()    
 
