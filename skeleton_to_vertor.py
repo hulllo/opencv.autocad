@@ -12,6 +12,11 @@ from win32com.client import VARIANT, Dispatch
 
 logging.basicConfig(level=logging.WARNING)
 sys.setrecursionlimit(1000000)
+
+def stretch_line(x, y):
+    '''x, y 为narray'''
+    
+
 def track_back():
     pass
 def cal_arroud(n,img):
@@ -47,9 +52,11 @@ def do_point(point,img,newline,newlines = []):
     if len(onelist) >= 1:
         for n,item in enumerate(onelist):
             img[item[0],item[1]] = 0 #在位图中删除这些像素点
+            if n >= 1:
+                newline.append([point[0],point[1]])
             newline.append(item) #将这些点增加到新矢量图队列
             img, newlines = do_point(item,img,newline,newlines)
-            if newline in newlines or len(newline) <= 20:
+            if newline in newlines or len(newline) <= 10:
                 newline = []
                 continue
             else:
@@ -77,15 +84,27 @@ def zuobiaopaixu(a):
     return b  
 
 def open_(filename):
-    img = cv2.imread('realpcb2.jpg')
+    img = cv2.imread(filename)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    ret,thresh = cv2.threshold(img_gray,70,255,cv2.THRESH_BINARY)#二值化
-    tmp = np.hstack((img_gray, thresh))  # 两张图片横向合并（便于对比显示）
+
+    img_gray = cv2.medianBlur(img_gray, 5) #中值滤波
+
+    # 固定阈值
+    # ret,thresh = cv2.threshold(img_gray,70,255,cv2.THRESH_BINARY)#二值化
+
+    # 自适应阈值    
+    # thresh = cv2.adaptiveThreshold(
+    # img_gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 4)
+
+    ret, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    print(thresh)
+
+    # tmp = np.hstack((img_gray, thresh))  # 两张图片横向合并（便于对比显示）
     thresh[thresh == 255] = 1
     # perform skeletonization
     skeleton = skeletonize(thresh)
-    plt.imshow(skeleton, cmap="gray")
-    plt.show()
+    # plt.imshow(skeleton, cmap="gray")
+    # plt.show()
     return skeleton
 
 def POINT(x,y,z):
@@ -104,7 +123,7 @@ img = np.array([[1,1,1,1,1,1],
 #             [0,0,0,0,0,0],
 #             [0,0,0,0,0,0],
 #             [0,0,0,0,0,0] ])
-img = open_('realpcb1.jpg')
+img = open_('minirealpcb1.jpg')
 shape = img.shape
 logging.info(shape)
 index = np.argwhere(img == 1)
@@ -112,13 +131,13 @@ newlines = []
 
 fig, (ax1,ax2) = plt.subplots(nrows=1, ncols=2,
                          sharex=True, sharey=True)
+
+lines = []
+# a = Dispatch('AutoCAD.Application')
+# print(a)
+# a.Visible = 1
 ax2.axis('image')
 ax1.imshow(img, cmap="gray")
-lines = []
-a = Dispatch('AutoCAD.Application')
-print(a)
-a.Visible = 1
-
 while len(index) != 0:
     img[index[0][0],index[0][1]] = 0 #在位图中删除这个像素点
     newline = []
@@ -133,13 +152,43 @@ while len(index) != 0:
                 stop_point = POINT(x[n+1][1], shape[0]-x[n+1][0], 0)
             except IndexError :
                 continue
-            a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
+            # a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
         x = np.array(x)
         xdata = x[:,1]
-        ydata = x[:,0] 
+        ydata = x[:,0]
         ax2.plot(xdata, ydata,linewidth = 1)
-        plt.draw()  
-        plt.pause(1e-27)
+       
+        plt.draw()
+        # plt.pause(1e-27)
+        x_deltas = []
+        y_deltas = []  
+        ks = []
+        diff_index = []
+        countsames = []
+        for n, x in enumerate(xdata):
+            if n >= 1:
+                k = (ydata[n]-ydata[n-1])/(xdata[n]-xdata[n-1])
+
+                if k == 'inf':
+                    pass
+                    continue
+                ks.append(k)
+                if len(ks) >= 2:
+                    countsame = 0
+                    countdif = 0
+                    if (ks[n-1] == ks[n-2]):
+                        countsame = countsame + 1 #累加器，记录斜率重复了多少个
+                    else:
+                        countsames.append(countsame) #重复的斜率结束，将重复个数加入到重复个数队列
+                        diff_index.append(n)    #记录下不重复的位置
+                        countdif = countdif + 1 #累加器，记录不重复的有多少个
+                        
+        print(countsames) 
+        print(countdif)       
+        # print(ks)
+
+        break
+    break
     index = np.argwhere(img == 1)
 plt.show()    
 
@@ -156,4 +205,4 @@ plt.show()
 #         except IndexError :
 #             continue
 #         a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
-a.ZoomAll() 
+# a.ZoomAll() 
