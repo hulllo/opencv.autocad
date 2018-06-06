@@ -157,70 +157,75 @@ while len(index) != 0:
         x = np.array(x)
         xdatas = x[:,1]
         ydatas = x[:,0]
-        ax2.plot(xdatas, ydatas,linewidth = 1)
+        # ax2.plot(xdatas, ydatas,linewidth = 1)
        
         plt.draw()
         # plt.pause(1e-27)
         ks = []
         for n,xdata in enumerate(xdatas):
             if n >= 1:
-                k = (ydatas[n]-ydatas[n-1])/(xdatas[n]-xdatas[n-1])
+                k = (ydatas[n]-ydatas[n-1])/(xdatas[n]-xdatas[n-1]) #计算所有点两点之间的斜率
                 ks.append(k)
-        same_v,same_count = count_same(ks)
+        same_v,same_count = count_same(ks) #计算重复斜率的个数
         print(same_v,'\n',same_count)
         count = 0
         del_ranges = []
         for i,v in enumerate(same_count):
             real_index = 0
-            if same_count[i] >= 3:
+            if same_count[i] >= 3:  #重复的斜率大于3，有多余的点
                 # print('i:',i)
-                for ii,vv in enumerate(same_count[0:i]):    
+                for ii,vv in enumerate(same_count[0:i]):    #计算重复点前面的元素总个数
                     real_index = real_index + vv
-                real_index_st = real_index +1
-                real_index_sp = real_index_st + same_count[i]-1
-                # print(real_index_st,real_index_sp)
-                del_range = list(range(real_index_st,real_index_sp))
+                real_index_st = real_index +1       #计算重复点的开始位置
+                real_index_sp = real_index_st + same_count[i]-1 #计算重复点的结束位置
+                del_range = list(range(real_index_st,real_index_sp))    
                 del_ranges = del_ranges + del_range
-        # print('del_ranges:',del_ranges)  
-        # print('len del_ranges:',len(del_ranges))
-        # print('len xdatas:',len(xdatas))
-        # print('xdatas:',xdatas)
-        newxdatas = np.delete(xdatas, del_ranges)
-        newydatas = np.delete(ydatas, del_ranges)
-        # print('len newxdatas:',len(newxdatas))
+        newxdatas = np.delete(xdatas, del_ranges)   #删除重复的x点
+        newydatas = np.delete(ydatas, del_ranges)   #删除重复的y点
         print('newxdatas:',newxdatas)
         print('newydatas:',newydatas)
 
-            # else:
-            #     start_c = i - count #重复发生之前的索引
-            #     stop_c = i #重复结束后的索引
-            #     # print('start_c:',start_c)
-            #     # print('stop_c:',stop_c)
-            #     count = 0
-            #     if same_count[start_c-1]>4 and same_count[stop_c] > 4:
+        x_deltas = []
+        y_deltas = []  
+        ks = []  
+        for i,v in enumerate(newxdatas):
+            if i >= 1:
+                x_deltas.append(newxdatas[i] - newxdatas[i-1])
+                y_deltas.append(newydatas[i] - newydatas[i-1])
+        x_deltas_sorted = sorted(x_deltas, reverse = -1)
+        # print(x_deltas_sorted)
+        xdeltal_max =x_deltas_sorted[0]
+        x_index_max = x_deltas.index(xdeltal_max) 
 
-            #         real_start_index = 0
-            #         for ii,vv in enumerate(same_count[0:start_c]):
-            #             real_start_index = real_start_index + vv
-            #         print('real_start_index:',real_start_index)
-                    
-            #         real_stop_index = 0
-            #         for ii,vv in enumerate(same_count[0:stop_c]):
-            #             real_stop_index = real_stop_index + vv
-            #         print('real_stop_index:',real_stop_index)
+        y_deltas_sorted = sorted(y_deltas, reverse = -1)
+        # print(x_deltas_sorted)
+        ydeltal_max =y_deltas_sorted[0]
+        y_index_max = y_deltas.index(ydeltal_max) 
 
-            #         if xdatas[real_start_index]==xdatas[real_stop_index+1] or ydatas[real_start_index]==ydatas[real_stop_index+1]:
-            #             newxdatas = np.delete(xdatas, list(range(real_start_index+1,real_stop_index)))
-            #             newydatas = np.delete(ydatas, list(range(real_start_index+1,real_stop_index)))
+        d = newxdatas[y_index_max]
+        k = 0
+        for i,v in enumerate(newydatas):
+            if abs(newxdatas[i] -  d) <= 2:
+                newxdatas[i] =  d 
+        # ax2.plot(newxdatas, newydatas,linewidth = 1)
+        # ax2.plot(k * newydatas + d,newydatas ,'s',linewidth = 1)
 
-    
+        k = (newydatas[x_index_max+1] - newydatas[x_index_max])/(newxdatas[x_index_max+1] - newxdatas[x_index_max])
+        d = newydatas[x_index_max] - newxdatas[x_index_max] * k
+        print(d)
+        # print('x_deltas:',x_deltas)
+        # print('y_deltas:',y_deltas)
+        # print(x_index_max)        
+        print(k)
+        for i,v in enumerate(newxdatas):
+            if abs(newydatas[i] - k * newxdatas[i] - d) <= 2:
+                newydatas[i] = k * newxdatas[i] + d
 
-            #     else:
-            #         continue
-        ax2.plot(newxdatas, newydatas,'s',linewidth = 1)
+        ax2.plot(newxdatas, newydatas,linewidth = 1)
+        # ax2.plot(newxdatas, k * newxdatas + d,'s',linewidth = 1)
 
-        break
-    break
+        # break
+    # break
     index = np.argwhere(img == 1)
 plt.show()    
 
