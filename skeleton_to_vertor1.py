@@ -9,6 +9,7 @@ from skimage import data
 from skimage.morphology import skeletonize
 from skimage.util import invert
 from win32com.client import VARIANT, Dispatch
+from count_same import count_same
 
 logging.basicConfig(level=logging.WARNING)
 sys.setrecursionlimit(1000000)
@@ -154,41 +155,54 @@ while len(index) != 0:
                 continue
             # a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
         x = np.array(x)
-        xdata = x[:,1]
-        ydata = x[:,0]
-        ax2.plot(xdata, ydata,linewidth = 1)
+        xdatas = x[:,1]
+        ydatas = x[:,0]
+        ax2.plot(xdatas, ydatas,linewidth = 1)
        
         plt.draw()
         # plt.pause(1e-27)
-        x_deltas = []
-        y_deltas = []  
         ks = []
-        diff_index = []
-        countsames = []
-        for n, x in enumerate(xdata):
+        for n,xdata in enumerate(xdatas):
             if n >= 1:
-                k = (ydata[n]-ydata[n-1])/(xdata[n]-xdata[n-1])
-
-                if k == 'inf':
-                    pass
-                    continue
+                k = (ydatas[n]-ydatas[n-1])/(xdatas[n]-xdatas[n-1])
                 ks.append(k)
-                if len(ks) >= 2:
-                    countsame = 0
-                    countdif = 0
-                    if (ks[n-1] == ks[n-2]):
-                        countsame = countsame + 1 #累加器，记录斜率重复了多少个
-                    else:
-                        countsames.append(countsame) #重复的斜率结束，将重复个数加入到重复个数队列
-                        diff_index.append(n)    #记录下不重复的位置
-                        countdif = countdif + 1 #累加器，记录不重复的有多少个
-                        
-        print(countsames) 
-        print(countdif)       
-        # print(ks)
+        same_v,same_count = count_same(ks)
+        print(same_v,'\n',same_count)
+        count = 0
+        for i,v in enumerate(same_count):
+            if v == 1:
+                count =count + 1
+            else:
+                start_c = i - count #重复发生之前的索引
+                stop_c = i #重复结束后的索引
+                # print('start_c:',start_c)
+                # print('stop_c:',stop_c)
+                count = 0
+                if same_count[start_c-1]>4 and same_count[stop_c] > 4:
 
-        break
-    break
+                    real_start_index = 0
+                    for ii,vv in enumerate(same_count[0:start_c]):
+                        real_start_index = real_start_index + vv
+                    print('real_start_index:',real_start_index)
+                    
+                    real_stop_index = 0
+                    for ii,vv in enumerate(same_count[0:stop_c]):
+                        real_stop_index = real_stop_index + vv
+                    print('real_stop_index:',real_stop_index)
+
+                    if xdatas[real_start_index]==xdatas[real_stop_index+1] or ydatas[real_start_index]==ydatas[real_stop_index+1]:
+                        newxdatas = np.delete(xdatas, list(range(real_start_index+1,real_stop_index)))
+                        newydatas = np.delete(ydatas, list(range(real_start_index+1,real_stop_index)))
+
+    
+
+                else:
+                    continue
+
+        ax2.plot(newxdatas, newydatas,linewidth = 1)
+
+        # break
+    # break
     index = np.argwhere(img == 1)
 plt.show()    
 
