@@ -14,13 +14,93 @@ from count_same import count_same
 logging.basicConfig(level=logging.WARNING)
 sys.setrecursionlimit(1000000)
 
-def stretch_line(x, y):
-    '''x, y 为narray'''
+def find_index(v,ls):
+    '''
+    查找元素在列表中的位置
+    '''
+    return [ i for i in range(len(ls)) if ls[i] == v]
+
+def stretch_line(newxdatas, newydatas):
+    '''
+    拉直直线
+    参数：
+    1. newxdatas, x轴坐标组合, numpy.narray
+    2. newydatas, y轴坐标组合, numpy.narray
+    返回:
+    1. newxdatas, x轴坐标组合, numpy.narray
+    2. newydatas, y轴坐标组合, numpy.narray
+    '''
+    x_deltas = []
+    y_deltas = []  
+    ks = []  
+    for i,v in enumerate(newxdatas):
+        if i >= 1:
+            x_deltas.append(newxdatas[i] - newxdatas[i-1])
+            y_deltas.append(newydatas[i] - newydatas[i-1])
+    x_deltas_sorted = sorted(x_deltas, reverse = -1) #对x两两差值进行从大到小排序
+    y_deltas_sorted = sorted(y_deltas, reverse = -1) #对y两两差值进行从大到小排序
     
+    #对直线进行拉直处理
+    for i in range(len(x_deltas_sorted)): 
+        x_deltas = []
+
+        #刷新x两两差值的排序
+        for ii,vv in enumerate(newxdatas):
+            if ii >= 1:
+                x_deltas.append(newxdatas[ii] - newxdatas[ii-1])
+        x_deltas_sorted = sorted(x_deltas, reverse = -1)
+
+        #x差值大于等于5，说明是一条较长的直线，计算该直线的函数
+        xdelta =x_deltas_sorted[i]
+        if abs(xdelta) >=5:
+            x_index = find_index(xdelta, x_deltas) 
+            for vvv in x_index:
+                k = (newydatas[vvv+1] - newydatas[vvv])/(newxdatas[vvv+1] - newxdatas[vvv])
+                d = newydatas[vvv] - newxdatas[vvv] * k
+
+            #根据直线的函数，遍历所有的x轴坐标，实际y轴坐标与直线坐标计算的y轴坐标对比，小于1，认为是同一条直线
+                for iiii,vvvv in enumerate(newxdatas):
+                    try:
+                        if (abs(newydatas[iiii] - k * newxdatas[iiii] - d) <= 1 and  
+                        (abs(newydatas[iiii-1] - k * newxdatas[iiii-1] - d <= 1) and 
+                        abs(newydatas[iiii+1] - k * newxdatas[iiii+1] - d <= 1))):
+                            newydatas[iiii] = k * newxdatas[iiii] + d
+                    except IndexError:
+                        continue
+
+        y_deltas = []
+        #刷新y两两差值的排序
+        for ii,vv in enumerate(newxdatas):
+            if ii >= 1:
+                y_deltas.append(newydatas[ii] - newydatas[ii-1])
+        y_deltas_sorted = sorted(y_deltas, reverse = -1)
+        # print('y_deltas_sorted1:',y_deltas_sorted)
+
+        ydeltal =y_deltas_sorted[i]
+        if abs(ydeltal) >= 5:
+            y_index = y_deltas.index(ydeltal)   
+            if newxdatas[y_index+1] - newxdatas[y_index] == 0:  #是一条垂线
+                d = newxdatas[y_index]
+                k = 0
+                for i,v in enumerate(newydatas):
+                    if abs(newxdatas[i] -  d) <= 1:
+                        newxdatas[i] =  d
+    return newxdatas, newydatas    
 
 def track_back():
     pass
+
 def cal_arroud(n,img):
+    '''
+    计算某个像素周围像素的坐标
+
+    参数：
+    1：n，点坐标，list
+    2：img，位图数组，numpy.ndarray
+
+    返回：
+    1：arroud_point，周围的坐标点坐标，list
+    '''
     shape = img.shape
     y = n[0]
     x = n[1]
@@ -36,7 +116,18 @@ def cal_arroud(n,img):
                 continue
     logging.info(arroud_point)
     return arroud_point
+
 def findones(arroud_point,img):
+    '''
+    查找位坐标列表上是1的坐标
+
+    参数：
+    1：arroud_point,位坐标列表, list
+    2: img, 位图数组, numpy.narray
+
+    返回：
+    1. onelist, 值等于1的位坐标的列表, list
+    '''
     onelist = []
     for n,item in enumerate(arroud_point):#迭代周围的位坐标，找到==1的点的位坐标
         isone = img[item[0],item[1]]
@@ -69,21 +160,6 @@ def do_point(point,img,newline,newlines = []):
     if len(onelist) == 0:
         return (img,newlines )    
 
-def zuobiaopaixu(a):  
-    b=[]  
-    l=len(a)  
-    for i in range(l):  
-        j=i  
-        for j in range(l):  
-            if (a[i][0]<a[j][0]):  
-                a[i],a[j]=a[j],a[i]  
-            if (a[i][1]>a[j][1]):  
-                a[i],a[j]=a[j],a[i]  
-  
-    for k in range(len(a)):  
-        b.append(a[k])  
-    return b  
-
 def open_(filename):
     img = cv2.imread(filename)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -107,6 +183,36 @@ def open_(filename):
     # plt.show()
     return skeleton
 
+def del_Duplicate_pt(xdatas,ydatas):
+    ''' 删除直线上冗余的点
+    参数：
+        x，y轴坐标, numpy.narray
+    返回：
+        x，y轴坐标, numpy.narray
+    '''
+    ks = []
+    for n,xdata in enumerate(xdatas):
+        if n >= 1:
+            k = (ydatas[n]-ydatas[n-1])/(xdatas[n]-xdatas[n-1]) #计算所有点两点之间的斜率
+            ks.append(k)
+    same_v,same_count = count_same(ks) #计算重复斜率的个数
+    # count = 0
+    del_ranges = []
+    for i,v in enumerate(same_count):
+        real_index = 0
+        if same_count[i] >= 2:  #重复的斜率大于3，有多余的点
+            # print('i:',i)
+            for ii,vv in enumerate(same_count[0:i]):    #计算重复点前面的元素总个数
+                real_index = real_index + vv
+            real_index_st = real_index +1       #计算重复点的开始位置
+            real_index_sp = real_index_st + same_count[i]-1 #计算重复点的结束位置
+            del_range = list(range(real_index_st,real_index_sp))    
+            del_ranges = del_ranges + del_range
+    newxdatas = np.delete(xdatas, del_ranges)   #删除重复的x点
+    newydatas = np.delete(ydatas, del_ranges)   #删除重复的y点
+    return newxdatas, newydatas
+
+
 def POINT(x,y,z):
    return VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, (x,y,z))  
 
@@ -123,7 +229,7 @@ img = np.array([[1,1,1,1,1,1],
 #             [0,0,0,0,0,0],
 #             [0,0,0,0,0,0],
 #             [0,0,0,0,0,0] ])
-img = open_('realpcb1.jpg')
+img = open_('minirealpcb1.jpg')
 shape = img.shape
 logging.info(shape)
 index = np.argwhere(img == 1)
@@ -142,96 +248,30 @@ while len(index) != 0:
     img[index[0][0],index[0][1]] = 0 #在位图中删除这个像素点
     newline = []
     newline.append([index[0][0],index[0][1]]) #将该点增加到新矢量图队列
-    img,newlines = do_point(index[0],img,newline,newlines = []) #递归找点
+    img,newlines = do_point(index[0],img,newline,newlines = []) #递归找点,找到一个或连在一起的多个线段
 
     for x in newlines:
-        for n, point in enumerate(x):
-            # print(point)
-            start_point = POINT(x[n][1], shape[0]-x[n][0], 0)
-            try:
-                stop_point = POINT(x[n+1][1], shape[0]-x[n+1][0], 0)
-            except IndexError :
-                continue
-            # a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
+
         x = np.array(x)
         xdatas = x[:,1]
         ydatas = x[:,0]
-        # ax2.plot(xdatas, ydatas,linewidth = 1)
-       
-        plt.draw()
-        # plt.pause(1e-27)
-        ks = []
-        for n,xdata in enumerate(xdatas):
-            if n >= 1:
-                k = (ydatas[n]-ydatas[n-1])/(xdatas[n]-xdatas[n-1]) #计算所有点两点之间的斜率
-                ks.append(k)
-        same_v,same_count = count_same(ks) #计算重复斜率的个数
-        count = 0
-        del_ranges = []
-        for i,v in enumerate(same_count):
-            real_index = 0
-            if same_count[i] >= 3:  #重复的斜率大于3，有多余的点
-                # print('i:',i)
-                for ii,vv in enumerate(same_count[0:i]):    #计算重复点前面的元素总个数
-                    real_index = real_index + vv
-                real_index_st = real_index +1       #计算重复点的开始位置
-                real_index_sp = real_index_st + same_count[i]-1 #计算重复点的结束位置
-                del_range = list(range(real_index_st,real_index_sp))    
-                del_ranges = del_ranges + del_range
-        newxdatas = np.delete(xdatas, del_ranges)   #删除重复的x点
-        newydatas = np.delete(ydatas, del_ranges)   #删除重复的y点
+        newxdatas, newydatas = del_Duplicate_pt(xdatas,ydatas)#删除同一直线上冗余的坐标
+        newxdatas, newydatas = stretch_line(newxdatas, newydatas)#拉直直线
+        newxdatas, newydatas = del_Duplicate_pt(newxdatas,newydatas)#删除同一直线上冗余的坐标
 
-        x_deltas = []
-        y_deltas = []  
-        ks = []  
-        for i,v in enumerate(newxdatas):
-            if i >= 1:
-                x_deltas.append(newxdatas[i] - newxdatas[i-1])
-                y_deltas.append(newydatas[i] - newydatas[i-1])
-        x_deltas_sorted = sorted(x_deltas, reverse = -1) 
-        y_deltas_sorted = sorted(y_deltas, reverse = -1)
-        
-        # print('x_deltas_sorted:',x_deltas_sorted)
-        # print('y_deltas_sorted:',y_deltas_sorted)
-
-
-        for i,v in enumerate(x_deltas_sorted):
-            x_deltas = []
-            for ii,vv in enumerate(newxdatas):
-                if ii >= 1:
-                    x_deltas.append(newxdatas[ii] - newxdatas[ii-1])
-            x_deltas_sorted = sorted(x_deltas, reverse = -1)
-            # print('x_deltas_sorted1:',x_deltas_sorted)
-
-            xdeltal =x_deltas_sorted[i]
-            if abs(xdeltal) >=5:
-                x_index = x_deltas.index(xdeltal) 
-                k = (newydatas[x_index+1] - newydatas[x_index])/(newxdatas[x_index+1] - newxdatas[x_index])
-                d = newydatas[x_index] - newxdatas[x_index] * k
-    
-                for ii,v in enumerate(newxdatas):
-                    if abs(newydatas[ii] - k * newxdatas[ii] - d) <= 1:
-                        newydatas[ii] = k * newxdatas[ii] + d
-
-            y_deltas = []
-            for ii,vv in enumerate(newxdatas):
-                if ii >= 1:
-                    y_deltas.append(newydatas[ii] - newydatas[ii-1])
-            y_deltas_sorted = sorted(y_deltas, reverse = -1)
-            # print('y_deltas_sorted1:',y_deltas_sorted)
-
-            ydeltal =y_deltas_sorted[i]
-            if abs(ydeltal) >= 5:
-                y_index = y_deltas.index(ydeltal)   
-                if newxdatas[y_index+1] - newxdatas[y_index] == 0:
-                    d = newxdatas[y_index]
-                    k = 0
-                    for i,v in enumerate(newydatas):
-                        if abs(newxdatas[i] -  d) <= 1:
-                            newxdatas[i] =  d
+        ax2.plot(newxdatas, newydatas,'s',linewidth = 1)
         ax2.plot(newxdatas, newydatas,linewidth = 1)
-
-        # break
+        # plt.draw()
+        # plt.pause(1e-7)
+        for i,v in enumerate(newxdatas):
+            # print(newxdatas)
+            start_point = POINT(newxdatas[i], shape[0]-newydatas[i], 0)
+            try:
+                stop_point = POINT(newxdatas[i+1], shape[0]-newydatas[i+1], 0)
+            except IndexError :
+                continue
+            # a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
+    #     break
     # break
     index = np.argwhere(img == 1)
 plt.show()    
