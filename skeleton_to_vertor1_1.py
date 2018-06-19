@@ -7,12 +7,14 @@ import numpy as np
 import pythoncom
 from skimage import data
 from skimage.morphology import skeletonize
-from skimage.util import invert
 from win32com.client import VARIANT, Dispatch
 from count_same import count_same
+import math
 
 logging.basicConfig(level=logging.WARNING)
-sys.setrecursionlimit(1000000)
+sys.setrecursionlimit(1000000000)
+
+AUTOCAD_ENABLE = 0
 
 def find_index(v,ls):
     '''
@@ -61,9 +63,10 @@ def stretch_line(newxdatas, newydatas):
             #根据直线的函数，遍历所有的x轴坐标，实际y轴坐标与直线坐标计算的y轴坐标对比，小于1，认为是同一条直线
                 for iiii,vvvv in enumerate(newxdatas):
                     try:
-                        if (abs(newydatas[iiii] - k * newxdatas[iiii] - d) <= 1 and  
-                        (abs(newydatas[iiii-1] - k * newxdatas[iiii-1] - d <= 1) and 
-                        abs(newydatas[iiii+1] - k * newxdatas[iiii+1] - d <= 1))):
+                        if (abs(newydatas[iiii] - k * newxdatas[iiii] - d) <= 1 
+                        and abs(newydatas[iiii-1] - k * newxdatas[iiii-1] - d <= 1)
+                        and abs(newydatas[iiii+1] - k * newxdatas[iiii+1] - d <= 1)):
+                        
                             newydatas[iiii] = k * newxdatas[iiii] + d
                     except IndexError:
                         continue
@@ -147,20 +150,39 @@ def do_point(point,img,newline,newlines = []):
             if n >= 1:
                 newline.append([point[0],point[1]])
             newline.append(item) #将这些点增加到新矢量图队列
+            
             img, newlines = do_point(item,img,newline,newlines)
+            if len(newlines) >= 3:#相连的线段太多
+                return (img,newlines ) 
+
             if newline in newlines or len(newline) <= 10:
                 newline = []
                 continue
             else:
                 newlines.append(newline)
-            # print('有{0}条线：'.format(len(newlines)))
+                x = np.array(newline)
+                xdatas = x[:,1]
+                ydatas = x[:,0]
+                # plt.plot(xdatas, ydatas)
+                # plt.draw()
+        
+            # print('have {0} lines：'.format(len(newlines)))
             newline = []
+        
         return (img,newlines )   
+    
 
     if len(onelist) == 0:
         return (img,newlines )    
 
 def open_(filename):
+    '''
+    打开文件为cv2对象，中值滤波，二值化，获取骨架
+    参数：
+    1. filename, 文件路径名字，str
+    返回：
+    2. skeleton, 骨架，numpy.ndarray
+    '''
     img = cv2.imread(filename)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -193,8 +215,13 @@ def del_Duplicate_pt(xdatas,ydatas):
     ks = []
     for n,xdata in enumerate(xdatas):
         if n >= 1:
-            k = (ydatas[n]-ydatas[n-1])/(xdatas[n]-xdatas[n-1]) #计算所有点两点之间的斜率
+            deltalx = xdatas[n]-xdatas[n-1]
+            if deltalx == 0:
+                k = 'inf' 
+            else:
+                k = (ydatas[n]-ydatas[n-1])/deltalx #计算所有点两点之间的斜率
             ks.append(k)
+
     same_v,same_count = count_same(ks) #计算重复斜率的个数
     # count = 0
     del_ranges = []
@@ -212,81 +239,110 @@ def del_Duplicate_pt(xdatas,ydatas):
     newydatas = np.delete(ydatas, del_ranges)   #删除重复的y点
     return newxdatas, newydatas
 
-
 def POINT(x,y,z):
    return VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, (x,y,z))  
 
-img = np.array([[1,1,1,1,1,1],
-            [0,1,0,0,1,0],
-            [0,1,1,0,0,0],
-            [1,0,0,1,0,0],
-            [0,0,0,0,1,0],
-            [0,0,0,0,0,0] ])
+def main():
+    img = np.array([[1,1,1,1,1,1],
+                [0,1,0,0,1,0],
+                [0,1,1,0,0,0],
+                [1,0,0,1,0,0],
+                [0,0,0,0,1,0],
+                [0,0,0,0,0,0] ])
 
-# img = np.array([[0,0,0,0,0,0],
-#             [0,0,0,0,0,0],
-#             [0,0,0,0,0,0],
-#             [0,0,0,0,0,0],
-#             [0,0,0,0,0,0],
-#             [0,0,0,0,0,0] ])
-img = open_('minirealpcb1.jpg')
-shape = img.shape
-logging.info(shape)
-index = np.argwhere(img == 1)
-newlines = []
-
-fig, (ax1,ax2) = plt.subplots(nrows=1, ncols=2,
-                         sharex=True, sharey=True)
-
-lines = []
-# a = Dispatch('AutoCAD.Application')
-# print(a)
-# a.Visible = 1
-ax2.axis('image')
-ax1.imshow(img, cmap="gray")
-while len(index) != 0:
-    img[index[0][0],index[0][1]] = 0 #在位图中删除这个像素点
-    newline = []
-    newline.append([index[0][0],index[0][1]]) #将该点增加到新矢量图队列
-    img,newlines = do_point(index[0],img,newline,newlines = []) #递归找点,找到一个或连在一起的多个线段
-
-    for x in newlines:
-
-        x = np.array(x)
-        xdatas = x[:,1]
-        ydatas = x[:,0]
-        newxdatas, newydatas = del_Duplicate_pt(xdatas,ydatas)#删除同一直线上冗余的坐标
-        newxdatas, newydatas = stretch_line(newxdatas, newydatas)#拉直直线
-        newxdatas, newydatas = del_Duplicate_pt(newxdatas,newydatas)#删除同一直线上冗余的坐标
-
-        ax2.plot(newxdatas, newydatas,'s',linewidth = 1)
-        ax2.plot(newxdatas, newydatas,linewidth = 1)
-        # plt.draw()
-        # plt.pause(1e-7)
-        for i,v in enumerate(newxdatas):
-            # print(newxdatas)
-            start_point = POINT(newxdatas[i], shape[0]-newydatas[i], 0)
-            try:
-                stop_point = POINT(newxdatas[i+1], shape[0]-newydatas[i+1], 0)
-            except IndexError :
-                continue
-            # a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
-    #     break
-    # break
+    # img = np.array([[0,0,0,0,0,0],
+    #             [0,0,0,0,0,0],
+    #             [0,0,0,0,0,0],
+    #             [0,0,0,0,0,0],
+    #             [0,0,0,0,0,0],
+    #             [0,0,0,0,0,0] ])
+    img = open_('realpcb1.jpg')
+    shape = img.shape
+    logging.info(shape)
     index = np.argwhere(img == 1)
-plt.show()    
+    strat_index = index
+    newlines = []
+
+    fig, (ax1,ax2) = plt.subplots(nrows=1, ncols=2,
+                            sharex=True, sharey=True)
+
+    lines = []
+
+    ax2.axis('image')
+    ax1.imshow(img, cmap="gray")
+
+    if AUTOCAD_ENABLE:
+        a = Dispatch('AutoCAD.Application')
+        a.Visible = 1
+        print('连接AUTOCAD成功')
+
+    while len(index) != 0:
+        print('进度：', 100-len(index)/len(strat_index)*100, end = '\r', flush = True)
+        img[index[0][0],index[0][1]] = 0 #在位图中删除这个像素点
+        newline = []
+        newline.append([index[0][0],index[0][1]]) #将该点增加到新矢量图队列
+        img,newlines = do_point(index[0],img,newline,newlines = []) #递归找点,找到一个或连在一起的多个线段
+        for x in newlines:
+
+            x = np.array(x)
+            xdatas = x[:,1]
+            ydatas = x[:,0]
+            newxdatas, newydatas = del_Duplicate_pt(xdatas,ydatas)#删除同一直线上冗余的坐标
+            newxdatas, newydatas = stretch_line(newxdatas, newydatas)#拉直直线
+            newxdatas, newydatas = del_Duplicate_pt(newxdatas,newydatas)#删除同一直线上冗余的坐标
+
+            # ax2.plot(newxdatas, newydatas,'s',linewidth = 1)
+            # ax2.plot(newxdatas, newydatas,linewidth = 1)
+            # plt.draw()
+            # plt.pause(1e-7)
+
+
+            #对于较短距离的三个点，将中间点替换为两端点的平均值
+            for i, v in enumerate(newxdatas):
+                x1,y1 = newxdatas[i],newydatas[i]
+                try:
+                    x2,y2 = newxdatas[i+1], newydatas[i+1]
+                    x3,y3 = newxdatas[i+2], newydatas[i+2]
+                except IndexError:
+                    continue
+                length1 = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)  
+                length2 = math.sqrt((x3 - x2)**2 + (y3 - y2)**2)  
+
+                if length1 <= 5 and length2 <= 5:
+                    newxdatas[i+1], newydatas[i+1] = (newxdatas[i]+newxdatas[i+2])/2, (newydatas[i]+newydatas[i+2])/2
+
+            ax2.plot(newxdatas, newydatas,linewidth = 1)
+
+            
+            for i,v in enumerate(newxdatas):
+                # print(newxdatas)
+                start_point = POINT(newxdatas[i], shape[0]-newydatas[i], 0)
+                try:
+                    stop_point = POINT(newxdatas[i+1], shape[0]-newydatas[i+1], 0)
+                except IndexError :
+                    continue
+                if AUTOCAD_ENABLE:
+                    print('写入到AUTOCAD')
+                    a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
+        #     break
+        # break
+        index = np.argwhere(img == 1)
+    plt.show()    
 
 
 
 
 
-# for line in lines:
-#     for n, point in enumerate(line):
-#         print(point)
-#         start_point = POINT(line[n][1], line[0][0], 0)
-#         try:
-#             stop_point = POINT(line[n+1][1], line[n+1][0], 0)
-#         except IndexError :
-#             continue
-#         a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
-# a.ZoomAll() 
+    # for line in lines:
+    #     for n, point in enumerate(line):
+    #         print(point)
+    #         start_point = POINT(line[n][1], line[0][0], 0)
+    #         try:
+    #             stop_point = POINT(line[n+1][1], line[n+1][0], 0)
+    #         except IndexError :
+    #             continue
+    #         a.ActiveDocument.ModelSpace.AddLine(start_point, stop_point)
+    # a.ZoomAll() 
+
+if __name__ == '__main__':
+    main()
